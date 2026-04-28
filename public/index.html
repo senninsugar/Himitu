@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Archive Reader | Premium</title>
+    <title>sennin | Premium</title>
     <style>
         :root {
             --bg: #ffffff;
@@ -55,6 +55,42 @@
             gap: 40px 24px;
         }
 
+        /* --- Welcome Section --- */
+        .welcome-container {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 80px 20px;
+            animation: fadeIn 1s ease forwards;
+        }
+        .welcome-logo {
+            font-size: 64px;
+            font-weight: 800;
+            color: var(--accent);
+            margin-bottom: 24px;
+            letter-spacing: -2px;
+        }
+        .welcome-text {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .welcome-sub {
+            color: var(--sub);
+            font-size: 16px;
+            max-width: 500px;
+            margin: 0 auto 40px;
+            line-height: 1.6;
+        }
+        .welcome-hint {
+            display: inline-block;
+            padding: 12px 24px;
+            background: var(--gray);
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--sub);
+        }
+
         /* --- Card --- */
         .card { 
             cursor: pointer; position: relative;
@@ -94,12 +130,13 @@
              display: flex; gap: 12px;
         }
         .ctrl-btn {
-            width: 40px; height: 40px; background: rgba(128,128,128,0.1); 
-            backdrop-filter: blur(10px); border-radius: 50%; display: flex; 
-            align-items: center; justify-content: center; cursor: pointer; font-size: 18px;
-            transition: all 0.2s;
+            padding: 0 12px; height: 40px; background: rgba(128,128,128,0.1); 
+            backdrop-filter: blur(10px); border-radius: 20px; display: flex; 
+            align-items: center; justify-content: center; cursor: pointer; font-size: 14px;
+            font-weight: 600; transition: all 0.2s; white-space: nowrap;
         }
         .ctrl-btn:hover { background: rgba(128,128,128,0.2); transform: scale(1.05); }
+        .icon-btn { width: 40px; border-radius: 50%; font-size: 18px; }
 
         .reader-content { max-width: 900px; margin: 0 auto; padding: 100px 0 80px; }
         .reader-header { text-align: center; padding: 0 24px 60px; transition: opacity 0.3s; }
@@ -136,6 +173,8 @@
             .grid { grid-template-columns: repeat(2, 1fr); gap: 24px 16px; }
             .reader-header h1 { font-size: 20px; }
             .reader-nav-title { font-size: 13px; }
+            .welcome-logo { font-size: 48px; }
+            .welcome-text { font-size: 20px; }
         }
     </style>
 </head>
@@ -146,11 +185,11 @@
 
 <nav id="mainNav">
     <div class="nav-content">
-        <div class="brand" onclick="location.reload()">ARCHIVE</div>
+        <div class="brand" onclick="location.reload()">sennin</div>
         <div class="search-bar">
             <input type="text" id="si" placeholder="タイトル、サークル名で検索..." onkeypress="if(event.key==='Enter') search()">
         </div>
-        <div class="ctrl-btn" onclick="toggleTheme()" title="テーマ切り替え">🌓</div>
+        <div class="ctrl-btn icon-btn" onclick="toggleTheme()" title="テーマ切り替え">🌓</div>
     </div>
 </nav>
 
@@ -160,10 +199,11 @@
 
 <div id="modal" class="modal">
     <div id="readerNav" class="reader-nav">
-        <div class="ctrl-btn" onclick="closeModal()" title="ホームへ">🏠</div>
+        <div class="ctrl-btn" onclick="closeModal()" title="ホームへ">ホーム</div>
         <div id="navTitle" class="reader-nav-title">読み込み中...</div>
         <div class="modal-controls">
-            <div class="ctrl-btn" onclick="closeModal()" title="閉じる">&times;</div>
+            <div id="dlBtn" class="ctrl-btn" style="display:none;" onclick="downloadAll()">保存</div>
+            <div class="ctrl-btn icon-btn" onclick="closeModal()" title="閉じる">&times;</div>
         </div>
     </div>
     
@@ -172,6 +212,24 @@
 
 <script>
     const api = (path) => `${window.location.origin}/api/${path}`;
+    let currentImages = [];
+    let currentTitle = "";
+
+    // Welcome メッセージの表示
+    function showWelcome() {
+        const grid = document.getElementById('grid');
+        grid.innerHTML = `
+            <div class="welcome-container">
+                <div class="welcome-logo">sennin</div>
+                <div class="welcome-text">Archive Reader Premium</div>
+                <p class="welcome-sub">
+                    膨大なアーカイブからお気に入りの作品を素早く見つけ出し、
+                    シームレスな読書体験を提供します。
+                </p>
+                <div class="welcome-hint">上の検索バーからキーワードを入力して開始してください</div>
+            </div>
+        `;
+    }
 
     // エラーアラート表示ロジック
     function showAlert(msg) {
@@ -193,7 +251,6 @@
         const st = e.target.scrollTop;
         const nav = document.getElementById('readerNav');
         
-        // ヘッダーの表示切り替え（上にスクロールで表示、下で非表示）
         if (st > lastScroll && st > 100) {
             nav.classList.add('hide');
         } else {
@@ -201,7 +258,6 @@
         }
         lastScroll = st;
 
-        // 進捗バー
         const height = e.target.scrollHeight - e.target.clientHeight;
         const scrolled = (st / height) * 100;
         document.getElementById("progress").style.width = scrolled + "%";
@@ -210,7 +266,11 @@
     async function search() {
         const q = document.getElementById('si').value;
         const grid = document.getElementById('grid');
-        if (!q) return;
+        
+        if (!q) {
+            showWelcome();
+            return;
+        }
 
         grid.innerHTML = Array(10).fill(0).map(() => `
             <div class="card">
@@ -226,7 +286,7 @@
             
             if (!data.result || data.result.length === 0) {
                 showAlert("作品が見つかりませんでした");
-                grid.innerHTML = '<p style="text-align:center; grid-column:1/-1; opacity:0.5;">No results.</p>';
+                grid.innerHTML = '<p style="text-align:center; grid-column:1/-1; opacity:0.5; padding-top:40px;">No results found.</p>';
                 return;
             }
 
@@ -247,7 +307,7 @@
             });
         } catch (e) { 
             showAlert("検索中にエラーが発生しました");
-            grid.innerHTML = '<p style="text-align:center; grid-column:1/-1;">通信エラー</p>';
+            grid.innerHTML = '<p style="text-align:center; grid-column:1/-1; padding-top:40px;">通信エラーが発生しました。</p>';
         }
     }
 
@@ -255,10 +315,12 @@
         const modal = document.getElementById('modal');
         const body = document.getElementById('readerBody');
         const navTitle = document.getElementById('navTitle');
+        const dlBtn = document.getElementById('dlBtn');
         
         modal.classList.add('active');
         document.body.style.overflow = 'hidden';
         navTitle.innerText = "読み込み中...";
+        dlBtn.style.display = "none";
         
         body.innerHTML = `
             <div class="reader-content">
@@ -277,7 +339,11 @@
 
             if (!d) throw new Error("No data");
 
+            currentImages = d.imageUrlsBase64;
+            currentTitle = d.title;
             navTitle.innerText = d.title;
+            dlBtn.style.display = "flex";
+
             body.innerHTML = `
                 <div class="reader-content">
                     <div class="reader-header">
@@ -296,6 +362,18 @@
         }
     }
 
+    function downloadAll() {
+        if (!currentImages.length) return;
+        showAlert("ダウンロードを開始します（各画像を個別に保存します）");
+        currentImages.forEach((base64, index) => {
+            if (!base64) return;
+            const link = document.createElement('a');
+            link.href = base64;
+            link.download = `${currentTitle}_${index + 1}.jpg`;
+            link.click();
+        });
+    }
+
     function closeModal() {
         document.getElementById('modal').classList.remove('active');
         document.body.style.overflow = 'auto';
@@ -304,7 +382,8 @@
 
     window.addEventListener('keydown', e => { if(e.key === 'Escape') closeModal(); });
 
-    search();
+    // 初期状態は Welcome を表示
+    showWelcome();
 </script>
 </body>
 </html>
