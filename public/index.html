@@ -3,87 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Archive Reader</title>
+    <title>Archive Reader | Premium</title>
     <style>
         :root {
             --bg: #ffffff;
             --fg: #1d1d1f;
             --gray: #f5f5f7;
-            --border: #d2d2d7;
+            --border: rgba(0,0,0,0.1);
             --accent: #0071e3;
+            --sub: #86868b;
+            --modal-bg: #ffffff;
+        }
+
+        [data-theme="dark"] {
+            --bg: #000000;
+            --fg: #f5f5f7;
+            --gray: #1c1c1e;
+            --border: rgba(255,255,255,0.1);
+            --modal-bg: #1c1c1e;
         }
 
         body {
-            margin: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro", sans-serif;
+            margin: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Hiragino Kaku Gothic ProN", sans-serif;
             background: var(--bg); color: var(--fg); -webkit-font-smoothing: antialiased;
+            transition: background 0.3s ease;
         }
 
-        /* Navbar */
+        /* --- Navbar --- */
         nav {
-            position: sticky; top: 0; background: rgba(255,255,255,0.8);
+            position: sticky; top: 0; background: rgba(var(--bg-rgb), 0.7);
             backdrop-filter: saturate(180%) blur(20px); z-index: 100;
             border-bottom: 1px solid var(--border);
         }
         .nav-content {
-            max-width: 1000px; margin: 0 auto; padding: 12px 20px;
-            display: flex; align-items: center; justify-content: space-between;
+            max-width: 1200px; margin: 0 auto; padding: 12px 24px;
+            display: flex; align-items: center; gap: 20px;
         }
-        .brand { font-weight: 700; font-size: 18px; cursor: pointer; }
-        .search-bar { flex: 0 1 300px; }
+        .brand { font-weight: 800; font-size: 20px; letter-spacing: -0.5px; cursor: pointer; color: var(--accent); }
+        .search-bar { flex: 1; max-width: 500px; position: relative; }
         .search-bar input {
-            width: 100%; padding: 8px 16px; border-radius: 10px;
-            border: none; background: var(--gray); font-size: 14px; outline: none;
+            width: 100%; padding: 10px 16px; border-radius: 12px;
+            border: 1px solid transparent; background: var(--gray); 
+            font-size: 15px; outline: none; transition: all 0.2s; color: var(--fg);
         }
+        .search-bar input:focus { background: var(--bg); border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0,113,227,0.1); }
 
-        /* Grid */
-        .container { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
+        /* --- Grid --- */
+        .container { max-width: 1200px; margin: 40px auto; padding: 0 24px; }
         .grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 30px 20px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 40px 24px;
         }
 
-        /* Card */
-        .card { cursor: pointer; transition: transform 0.2s ease; }
-        .card:hover { transform: translateY(-4px); }
-        .card img {
-            width: 100%; aspect-ratio: 1/1.4; object-fit: cover;
-            border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            background: var(--gray);
+        /* --- Card --- */
+        .card { 
+            cursor: pointer; position: relative;
+            animation: slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
         }
-        .card-title { margin-top: 10px; font-size: 13px; font-weight: 600; line-height: 1.4; height: 2.8em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Modal / Reader */
+        .img-wrap {
+            width: 100%; aspect-ratio: 1/1.4; border-radius: 14px;
+            overflow: hidden; background: var(--gray);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card:hover .img-wrap { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
+        .card img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .card-info { padding: 12px 4px; }
+        .card-title { font-size: 14px; font-weight: 600; line-height: 1.5; color: var(--fg); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+        /* --- Modal / Reader --- */
         .modal {
-            position: fixed; inset: 0; background: white; z-index: 1000;
-            display: none; overflow-y: auto;
+            position: fixed; inset: 0; background: var(--modal-bg); z-index: 1000;
+            display: none; overflow-y: auto; opacity: 0; transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .modal-close {
-            position: fixed; top: 20px; right: 20px; font-size: 24px;
-            cursor: pointer; z-index: 1001; width: 40px; height: 40px;
-            background: rgba(0,0,0,0.05); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .reader-content { max-width: 800px; margin: 0 auto; padding: 60px 0; }
-        .reader-header { text-align: center; padding: 0 20px 40px; }
-        .reader-header h1 { font-size: 24px; margin-bottom: 8px; }
-        .reader-meta { color: #86868b; font-size: 14px; }
-        .img-stack img { width: 100%; display: block; margin-bottom: 2px; }
+        .modal.active { display: block; opacity: 1; }
 
-        .loader { text-align: center; padding: 100px; color: var(--sub); }
+        /* 視聴画面ヘッダー */
+        .reader-nav {
+            position: fixed; top: 0; left: 0; right: 0; height: 60px;
+            background: rgba(var(--bg-rgb), 0.8); backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border); display: flex; align-items: center;
+            padding: 0 20px; z-index: 1020; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .reader-nav.hide { transform: translateY(-100%); }
+        .reader-nav-title { flex: 1; font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 15px; text-align: center; }
+
+        .modal-controls {
+             display: flex; gap: 12px;
+        }
+        .ctrl-btn {
+            width: 40px; height: 40px; background: rgba(128,128,128,0.1); 
+            backdrop-filter: blur(10px); border-radius: 50%; display: flex; 
+            align-items: center; justify-content: center; cursor: pointer; font-size: 18px;
+            transition: all 0.2s;
+        }
+        .ctrl-btn:hover { background: rgba(128,128,128,0.2); transform: scale(1.05); }
+
+        .reader-content { max-width: 900px; margin: 0 auto; padding: 100px 0 80px; }
+        .reader-header { text-align: center; padding: 0 24px 60px; transition: opacity 0.3s; }
+        .reader-header h1 { font-size: 28px; margin-bottom: 12px; letter-spacing: -0.5px; }
+        .reader-meta { color: var(--sub); font-size: 15px; font-weight: 500; }
+
+        .img-stack img { 
+            width: 100%; display: block; margin-bottom: 4px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 4px;
+            animation: fadeIn 0.8s ease forwards;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- Skeleton --- */
+        .skeleton { background: linear-gradient(90deg, var(--gray) 25%, #e8e8ed 50%, var(--gray) 75%); background-size: 200% 100%; animation: loading 1.5s infinite; }
+        @keyframes loading { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+        .progress-bar {
+            position: fixed; top: 0; left: 0; height: 3px; background: var(--accent);
+            width: 0%; z-index: 1030; transition: width 0.1s ease;
+        }
+
+        /* アニメーション付きエラーアラート */
+        .alert-box {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: #ff3b30; color: white; padding: 12px 24px; border-radius: 30px;
+            font-weight: 600; box-shadow: 0 10px 25px rgba(255,59,48,0.3);
+            z-index: 2000; transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .alert-box.active { transform: translateX(-50%) translateY(0); }
 
         @media (max-width: 600px) {
-            .grid { grid-template-columns: repeat(2, 1fr); }
+            .grid { grid-template-columns: repeat(2, 1fr); gap: 24px 16px; }
+            .reader-header h1 { font-size: 20px; }
+            .reader-nav-title { font-size: 13px; }
         }
     </style>
 </head>
 <body>
 
-<nav>
+<div id="progress" class="progress-bar"></div>
+<div id="alert" class="alert-box">⚠️ <span id="alertMsg">エラーが発生しました</span></div>
+
+<nav id="mainNav">
     <div class="nav-content">
         <div class="brand" onclick="location.reload()">ARCHIVE</div>
         <div class="search-bar">
-            <input type="text" id="si" placeholder="Search..." onkeypress="if(event.key==='Enter') search()">
+            <input type="text" id="si" placeholder="タイトル、サークル名で検索..." onkeypress="if(event.key==='Enter') search()">
         </div>
+        <div class="ctrl-btn" onclick="toggleTheme()" title="テーマ切り替え">🌓</div>
     </div>
 </nav>
 
@@ -92,68 +159,151 @@
 </main>
 
 <div id="modal" class="modal">
-    <div class="modal-close" onclick="closeModal()">&times;</div>
+    <div id="readerNav" class="reader-nav">
+        <div class="ctrl-btn" onclick="closeModal()" title="ホームへ">🏠</div>
+        <div id="navTitle" class="reader-nav-title">読み込み中...</div>
+        <div class="modal-controls">
+            <div class="ctrl-btn" onclick="closeModal()" title="閉じる">&times;</div>
+        </div>
+    </div>
+    
     <div id="readerBody"></div>
 </div>
 
 <script>
     const api = (path) => `${window.location.origin}/api/${path}`;
 
+    // エラーアラート表示ロジック
+    function showAlert(msg) {
+        const alert = document.getElementById('alert');
+        document.getElementById('alertMsg').innerText = msg;
+        alert.classList.add('active');
+        setTimeout(() => alert.classList.remove('active'), 4000);
+    }
+
+    // テーマ管理
+    function toggleTheme() {
+        const current = document.body.getAttribute('data-theme');
+        document.body.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+    }
+
+    // 読了進捗バー & ヘッダーの非表示制御
+    let lastScroll = 0;
+    document.getElementById('modal').onscroll = function(e) {
+        const st = e.target.scrollTop;
+        const nav = document.getElementById('readerNav');
+        
+        // ヘッダーの表示切り替え（上にスクロールで表示、下で非表示）
+        if (st > lastScroll && st > 100) {
+            nav.classList.add('hide');
+        } else {
+            nav.classList.remove('hide');
+        }
+        lastScroll = st;
+
+        // 進捗バー
+        const height = e.target.scrollHeight - e.target.clientHeight;
+        const scrolled = (st / height) * 100;
+        document.getElementById("progress").style.width = scrolled + "%";
+    };
+
     async function search() {
         const q = document.getElementById('si').value;
         const grid = document.getElementById('grid');
         if (!q) return;
 
-        grid.innerHTML = '<div class="loader">Searching...</div>';
+        grid.innerHTML = Array(10).fill(0).map(() => `
+            <div class="card">
+                <div class="img-wrap skeleton"></div>
+                <div class="card-info"><div class="skeleton" style="height:14px; width:80%; border-radius:4px;"></div></div>
+            </div>
+        `).join('');
+
         try {
             const res = await fetch(api(`search?q=${encodeURIComponent(q)}`));
             const data = await res.json();
             grid.innerHTML = '';
-            data.result.forEach(item => {
+            
+            if (!data.result || data.result.length === 0) {
+                showAlert("作品が見つかりませんでした");
+                grid.innerHTML = '<p style="text-align:center; grid-column:1/-1; opacity:0.5;">No results.</p>';
+                return;
+            }
+
+            data.result.forEach((item, index) => {
                 const el = document.createElement('div');
                 el.className = 'card';
+                el.style.animationDelay = `${index * 0.04}s`;
                 el.onclick = () => openReader(item.id, item.rule);
                 el.innerHTML = `
-                    <img src="${item.image || ''}" loading="lazy">
-                    <div class="card-title">${item.title}</div>
+                    <div class="img-wrap">
+                        <img src="${item.image || ''}" alt="" loading="lazy">
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">${item.title}</div>
+                    </div>
                 `;
                 grid.appendChild(el);
             });
-        } catch (e) { grid.innerHTML = 'Error fetching results.'; }
+        } catch (e) { 
+            showAlert("検索中にエラーが発生しました");
+            grid.innerHTML = '<p style="text-align:center; grid-column:1/-1;">通信エラー</p>';
+        }
     }
 
     async function openReader(id, rule) {
         const modal = document.getElementById('modal');
         const body = document.getElementById('readerBody');
-        modal.style.display = 'block';
+        const navTitle = document.getElementById('navTitle');
+        
+        modal.classList.add('active');
         document.body.style.overflow = 'hidden';
-        body.innerHTML = '<div class="loader">Converting all pages to Base64...</div>';
+        navTitle.innerText = "読み込み中...";
+        
+        body.innerHTML = `
+            <div class="reader-content">
+                <div class="reader-header">
+                    <p class="skeleton" style="height:30px; width:60%; margin: 0 auto 20px; border-radius:8px;"></p>
+                    <p class="skeleton" style="height:20px; width:30%; margin: 0 auto; border-radius:4px;"></p>
+                </div>
+                <div class="loader" style="text-align:center; padding: 40px; opacity:0.6;">Converting Images...</div>
+            </div>
+        `;
 
         try {
             const res = await fetch(api(`detail?id=${id}&rule=${rule}`));
             const json = await res.json();
             const d = json.data;
 
+            if (!d) throw new Error("No data");
+
+            navTitle.innerText = d.title;
             body.innerHTML = `
                 <div class="reader-content">
                     <div class="reader-header">
                         <h1>${d.title}</h1>
-                        <div class="reader-meta">${d.circle} | ${d.pages}</div>
+                        <div class="reader-meta">${d.circle || '不明'} • ${d.pages}</div>
                     </div>
                     <div class="img-stack">
-                        ${d.imageUrlsBase64.map(src => src ? `<img src="${src}">` : '').join('')}
+                        ${d.imageUrlsBase64.map(src => src ? `<img src="${src}" loading="lazy">` : '').join('')}
                     </div>
                 </div>
             `;
-        } catch (e) { body.innerHTML = '<div class="loader">Error loading reader.</div>'; }
+            modal.scrollTop = 0;
+        } catch (e) { 
+            showAlert("詳細の取得に失敗しました");
+            closeModal();
+        }
     }
 
     function closeModal() {
-        document.getElementById('modal').style.display = 'none';
+        document.getElementById('modal').classList.remove('active');
         document.body.style.overflow = 'auto';
+        document.getElementById("progress").style.width = "0%";
     }
 
-    // Initial search
+    window.addEventListener('keydown', e => { if(e.key === 'Escape') closeModal(); });
+
     search();
 </script>
 </body>
